@@ -7,24 +7,24 @@ import SCons.Script as SCons
 import depends
 
 class OpenGLES(Feature):
-	def description(self):
-		return "OpenGL-ES >= 2.0 support [Experimental]"
+    def description(self):
+        return "OpenGL-ES >= 2.0 support [Experimental]"
 
-	def enabled(self, build):
-		build.flags['opengles'] = util.get_flags(build.env, 'opengles', 0)
-		return int(build.flags['opengles'])
+    def enabled(self, build):
+        build.flags['opengles'] = util.get_flags(build.env, 'opengles', 0)
+	return int(build.flags['opengles'])
 
-	def add_options(self, build, vars):
-		vars.Add('opengles', 'Set to 1 to enable OpenGL-ES >= 2.0 support [Experimental]', 0)
+    def add_options(self, build, vars):
+        vars.Add('opengles', 'Set to 1 to enable OpenGL-ES >= 2.0 support [Experimental]', 0)
 
-	def configure(self, build, conf):
-		if not self.enabled(build):
-          		return
-		if build.flags['opengles']:
-			build.env.Append(CPPDEFINES='__OPENGLES__')
+    def configure(self, build, conf):
+        if not self.enabled(build):
+            return
+	if build.flags['opengles']:
+	    build.env.Append(CPPDEFINES='__OPENGLES__')
 
-	def sources(self, build):
-		return []
+    def sources(self, build):
+        return []
 
 class HSS1394(Feature):
     def description(self):
@@ -64,6 +64,7 @@ class HSS1394(Feature):
 
 
 class HID(Feature):
+    INTERNAL_LINK = False
     HIDAPI_INTERNAL_PATH = '#lib/hidapi-0.8.0-rc1'
 
     def description(self):
@@ -81,18 +82,21 @@ class HID(Feature):
     def configure(self, build, conf):
         if not self.enabled(build):
             return
-        # TODO(XXX) allow external hidapi install, but for now we just use our
-        # internal one.
-        build.env.Append(
-            CPPPATH=[os.path.join(self.HIDAPI_INTERNAL_PATH, 'hidapi')])
 
         if build.platform_is_linux:
-            build.env.ParseConfig(
-                'pkg-config libusb-1.0 --silence-errors --cflags --libs')
-            if (not conf.CheckLib(['libusb-1.0', 'usb-1.0']) or
-                    not conf.CheckHeader('libusb-1.0/libusb.h')):
-                raise Exception(
-                    'Did not find the libusb 1.0 development library or its header file')
+            # Try using system lib
+            if not conf.CheckLib(['hidapi-libusb', 'libhidapi-libusb']):
+                # No System Lib found
+                self.INTERNAL_LINK = True
+                build.env.ParseConfig(
+                    'pkg-config libusb-1.0 --silence-errors --cflags --libs')
+                if (not conf.CheckLib(['libusb-1.0', 'usb-1.0']) or
+                        not conf.CheckHeader('libusb-1.0/libusb.h')):
+                    raise Exception(
+                           'Did not find the libusb 1.0 development library or its header file')
+            else:
+                build.env.ParseConfig('pkg-config hidapi-libusb --silence-errors --cflags --libs')
+
 
             # Optionally add libpthread and librt. Some distros need this.
             conf.CheckLib(['pthread', 'libpthread'])
@@ -102,30 +106,37 @@ class HID(Feature):
             build.env.Append(CCFLAGS='-pthread')
             build.env.Append(LINKFLAGS='-pthread')
 
-        elif build.platform_is_windows and not conf.CheckLib(['setupapi', 'libsetupapi']):
-            raise Exception('Did not find the setupapi library, exiting.')
-        elif build.platform_is_osx:
-            build.env.AppendUnique(FRAMEWORKS=['IOKit', 'CoreFoundation'])
+        else:
+            self.INTERNAL_LINK = True
+            if build.platform_is_windows and not conf.CheckLib(['setupapi', 'libsetupapi']):
+                raise Exception('Did not find the setupapi library, exiting.')
+            elif build.platform_is_osx:
+                build.env.AppendUnique(FRAMEWORKS=['IOKit', 'CoreFoundation'])
 
         build.env.Append(CPPDEFINES='__HID__')
+        if self.INTERNAL_LINK:
+            build.env.Append(
+                 CPPPATH=[os.path.join(self.HIDAPI_INTERNAL_PATH, 'hidapi')])
 
     def sources(self, build):
         sources = ['controllers/hid/hidcontroller.cpp',
                    'controllers/hid/hidenumerator.cpp',
                    'controllers/hid/hidcontrollerpresetfilehandler.cpp']
 
-        if build.platform_is_windows:
-            # Requires setupapi.lib which is included by the above check for
-            # setupapi.
-            sources.append(
-                os.path.join(self.HIDAPI_INTERNAL_PATH, "windows/hid.c"))
-        elif build.platform_is_linux:
-            # hidapi compiles the libusb implementation by default on Linux
-            sources.append(
-                os.path.join(self.HIDAPI_INTERNAL_PATH, 'libusb/hid.c'))
-        elif build.platform_is_osx:
-            sources.append(
-                os.path.join(self.HIDAPI_INTERNAL_PATH, 'mac/hid.c'))
+        if self.INTERNAL_LINK:
+            if build.platform_is_windows:
+                # Requires setupapi.lib which is included by the above check for
+                # setupapi.
+                sources.append(
+                    os.path.join(self.HIDAPI_INTERNAL_PATH, "windows/hid.c"))
+            elif build.platform_is_linux:
+                # hidapi compiles the libusb implementation by default on Linux
+                sources.append(
+                    os.path.join(self.HIDAPI_INTERNAL_PATH, 'libusb/hid.c'))
+            elif build.platform_is_osx:
+                sources.append(
+                    os.path.join(self.HIDAPI_INTERNAL_PATH, 'mac/hid.c'))
+
         return sources
 
 
@@ -360,7 +371,7 @@ class VinylControl(Feature):
 
 class Vamp(Feature):
     INTERNAL_LINK = False
-    INTERNAL_VAMP_PATH = '#lib/vamp-2.3'
+    INTERNAL_VAMP_PATH = '#lib/vamp-2.6'
 
     def description(self):
         return "Vamp Analyzer support"
@@ -411,7 +422,8 @@ class Vamp(Feature):
         if self.INTERNAL_LINK:
             hostsdk_src_path = '%s/src/vamp-hostsdk' % self.INTERNAL_VAMP_PATH
             sources.extend(path % hostsdk_src_path for path in
-                           ['%s/PluginBufferingAdapter.cpp',
+                           ['%s/Files.cpp',
+                            '%s/PluginBufferingAdapter.cpp',
                             '%s/PluginChannelAdapter.cpp',
                             '%s/PluginHostAdapter.cpp',
                             '%s/PluginInputDomainAdapter.cpp',
@@ -656,7 +668,7 @@ class QDebug(Feature):
         return "Debugging message output"
 
     def enabled(self, build):
-        build.flags['qdebug'] = util.get_flags(build.env, 'qdebug', 0)
+        build.flags['qdebug'] = util.get_flags(build.env, 'qdebug', 1)
         if build.platform_is_windows:
             if build.build_is_debug:
                 # Turn general debugging flag on too if debug build is specified
@@ -797,9 +809,9 @@ class TestSuite(Feature):
         return []
 
 
-class Shoutcast(Feature):
+class LiveBroadcasting(Feature):
     def description(self):
-        return "Shoutcast Broadcasting (OGG/MP3)"
+        return "Live Broadcasting Support"
 
     def enabled(self, build):
         build.flags['shoutcast'] = util.get_flags(build.env, 'shoutcast', 1)
@@ -808,14 +820,14 @@ class Shoutcast(Feature):
         return False
 
     def add_options(self, build, vars):
-        vars.Add('shoutcast', 'Set to 1 to enable shoutcast support', 1)
+        vars.Add('shoutcast', 'Set to 1 to enable live broadcasting support', 1)
 
     def configure(self, build, conf):
         if not self.enabled(build):
             return
 
         libshout_found = conf.CheckLib(['libshout', 'shout'])
-        build.env.Append(CPPDEFINES='__SHOUTCAST__')
+        build.env.Append(CPPDEFINES='__BROADCAST__')
 
         if not libshout_found:
             raise Exception('Could not find libshout or its development headers. Please install it or compile Mixxx without Shoutcast support using the shoutcast=0 flag.')
@@ -825,10 +837,10 @@ class Shoutcast(Feature):
             conf.CheckLib('ws2_32')
 
     def sources(self, build):
-        depends.Qt.uic(build)('preferences/dialog/dlgprefshoutcastdlg.ui')
-        return ['preferences/dialog/dlgprefshoutcast.cpp',
-                'shoutcast/shoutcastmanager.cpp',
-                'engine/sidechain/engineshoutcast.cpp']
+        depends.Qt.uic(build)('preferences/dialog/dlgprefbroadcastdlg.ui')
+        return ['preferences/dialog/dlgprefbroadcast.cpp',
+                'broadcast/broadcastmanager.cpp',
+                'engine/sidechain/enginebroadcast.cpp']
 
 
 class Opus(Feature):
@@ -1094,7 +1106,9 @@ class Optimize(Feature):
 
             # the following optimisation flags makes the engine code ~3 times
             # faster, measured on a Atom CPU.
-            build.env.Append(CCFLAGS='-O3 -ffast-math -funroll-loops')
+            build.env.Append(CCFLAGS='-O3')
+            build.env.Append(CCFLAGS='-ffast-math')
+            build.env.Append(CCFLAGS='-funroll-loops')
 
             # set -fomit-frame-pointer when we don't profile.
             # Note: It is only included in -O on machines where it does not
@@ -1159,35 +1173,12 @@ class Optimize(Feature):
                                 .format(optimize_level))
 
             # what others do:
-            # soundtouch uses just -O3 in Ubuntu Trusty
+            # soundtouch uses just -O3 and -msse in Ubuntu Trusty
             # rubberband uses just -O2 in Ubuntu Trusty
             # fftw3 (used by rubberband) in Ubuntu Trusty
             # -O3 -fomit-frame-pointer -mtune=native -malign-double
             # -fstrict-aliasing -fno-schedule-insns -ffast-math
 
-
-class AutoDjCrates(Feature):
-    def description(self):
-        return "Auto-DJ crates (for random tracks)"
-
-    def enabled(self, build):
-        build.flags['autodjcrates'] = \
-            util.get_flags(build.env, 'autodjcrates', 1)
-        if int(build.flags['autodjcrates']):
-            return True
-        return False
-
-    def add_options(self, build, vars):
-        vars.Add('autodjcrates',
-                 'Set to 1 to enable crates as a source for random Auto-DJ tracks.', 1)
-
-    def configure(self, build, conf):
-        if not self.enabled(build):
-            return
-        build.env.Append(CPPDEFINES='__AUTODJCRATES__')
-
-    def sources(self, build):
-        return ['library/dao/autodjcratesdao.cpp']
 
 class MacAppStoreException(Feature):
     def description(self):
@@ -1238,3 +1229,36 @@ class LocaleCompare(Feature):
         if not conf.CheckLib(['sqlite3']):
             raise Exception('Missing libsqlite3 -- exiting!')
         build.env.Append(CPPDEFINES='__SQLITE3__')
+
+class Battery(Feature):
+    def description(self):
+        return "Battery meter support."
+
+    def enabled(self, build):
+        build.flags['battery'] = util.get_flags(build.env, 'battery', 1)
+        if int(build.flags['battery']):
+            return True
+        return False
+
+    def add_options(self, build, vars):
+        vars.Add('battery',
+                 'Set to 1 to enable battery meter support.')
+
+    def configure(self, build, conf):
+        if not self.enabled(build):
+            return
+
+        build.env.Append(CPPDEFINES='__BATTERY__')
+
+    def sources(self, build):
+        if build.platform_is_windows:
+            return ["util/battery/batterywindows.cpp"]
+        elif build.platform_is_osx:
+            return ["util/battery/batterymac.cpp"]
+        elif build.platform_is_linux:
+            return ["util/battery/batterylinux.cpp"]
+        else:
+            raise Exception('Battery support is not implemented for the target platform.')
+
+    def depends(self, build):
+        return [depends.IOKit, depends.UPower]

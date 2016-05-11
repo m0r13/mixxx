@@ -38,7 +38,7 @@ typedef struct sqlite3_context sqlite3_context;
 typedef struct Mem sqlite3_value;
 #endif
 
-class TrackInfoObject;
+class Track;
 
 #define AUTODJ_TABLE "Auto DJ"
 
@@ -70,6 +70,8 @@ class TrackCollection : public QObject {
     UserSettingsPointer getConfig() {
         return m_pConfig;
     }
+
+    void relocateDirectory(QString oldDir, QString newDir);
 
   protected:
 #ifdef __SQLITE3__

@@ -7,7 +7,7 @@
 #include "engine/enginefilterbessel4.h"
 #include "library/trackcollection.h"
 #include "library/dao/analysisdao.h"
-#include "trackinfoobject.h"
+#include "track/track.h"
 #include "waveform/waveformfactory.h"
 
 AnalyzerWaveform::AnalyzerWaveform(UserSettingsPointer pConfig) :
@@ -58,7 +58,7 @@ bool AnalyzerWaveform::initialize(TrackPointer tio, int sampleRate, int totalSam
     }
 
     // If we don't need to calculate the waveform/wavesummary, skip.
-    if (loadStored(tio)) {
+    if (isDisabledOrLoadStoredSuccess(tio)) {
         m_skipProcessing = true;
     } else {
         // Now actually initialize the AnalyzerWaveform:
@@ -103,7 +103,7 @@ bool AnalyzerWaveform::initialize(TrackPointer tio, int sampleRate, int totalSam
     return !m_skipProcessing;
 }
 
-bool AnalyzerWaveform::loadStored(TrackPointer tio) const {
+bool AnalyzerWaveform::isDisabledOrLoadStoredSuccess(TrackPointer tio) const {
     ConstWaveformPointer pTrackWaveform = tio->getWaveform();
     ConstWaveformPointer pTrackWaveformSummary = tio->getWaveformSummary();
     ConstWaveformPointer pLoadedTrackWaveform;
@@ -315,7 +315,7 @@ void AnalyzerWaveform::finalize(TrackPointer tio) {
 #endif
 
     qDebug() << "Waveform generation for track" << tio->getId() << "done"
-             << m_timer.elapsed().formatSecondsWithUnit();
+             << m_timer.elapsed().debugSecondsWithUnit();
 }
 
 void AnalyzerWaveform::storeIfGreater(float* pDest, float source) {

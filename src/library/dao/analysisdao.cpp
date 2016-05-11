@@ -107,7 +107,7 @@ QList<AnalysisDao::AnalysisInfo> AnalysisDao::loadAnalysesFromQuery(TrackId trac
     }
     qDebug() << "AnalysisDAO fetched" << analyses.size() << "analyses,"
              << bytes << "bytes for track"
-             << trackId << "in" << time.elapsed().formatMillisWithUnit();
+             << trackId << "in" << time.elapsed().debugMillisWithUnit();
     return analyses;
 }
 
@@ -180,7 +180,7 @@ bool AnalysisDao::saveAnalysis(AnalysisDao::AnalysisInfo* info) {
              << QString("%1 (%2 compressed)").arg(QString::number(info->data.length()),
                                                   QString::number(compressedData.length()))
              << "bytes for track"
-             << info->trackId << "in" << time.elapsed().formatMillisWithUnit();
+             << info->trackId << "in" << time.elapsed().debugMillisWithUnit();
     return true;
 }
 
@@ -315,7 +315,7 @@ bool AnalysisDao::saveDataToFile(const QString& fileName, const QByteArray& data
     return true;
 }
 
-void AnalysisDao::saveTrackAnalyses(TrackInfoObject* pTrack) {
+void AnalysisDao::saveTrackAnalyses(Track* pTrack) {
     if (!pTrack) {
         return;
     }
