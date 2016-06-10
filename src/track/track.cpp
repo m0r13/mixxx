@@ -82,7 +82,7 @@ TrackPointer Track::newDummy(
 
 // static
 void Track::onTrackReferenceExpired(Track* pTrack) {
-    DEBUG_ASSERT_AND_HANDLE(pTrack != NULL) {
+    DEBUG_ASSERT_AND_HANDLE(pTrack != nullptr) {
         return;
     }
     //qDebug() << "Track::onTrackReferenceExpired"
@@ -811,7 +811,7 @@ Keys Track::getKeys() const {
 }
 
 void Track::setKey(mixxx::track::io::key::ChromaticKey key,
-                             mixxx::track::io::key::Source keySource) {
+                   mixxx::track::io::key::Source keySource) {
     if (key == mixxx::track::io::key::INVALID) {
         resetKeys();
     } else {
@@ -833,7 +833,7 @@ mixxx::track::io::key::ChromaticKey Track::getKey() const {
 }
 
 void Track::setKeyText(const QString& keyText,
-                                 mixxx::track::io::key::Source keySource) {
+                       mixxx::track::io::key::Source keySource) {
     Keys keys(KeyFactory::makeBasicKeysFromText(keyText, keySource));
     const mixxx::track::io::key::ChromaticKey globalKey(keys.getGlobalKey());
     if (globalKey == mixxx::track::io::key::INVALID) {
