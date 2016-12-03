@@ -71,6 +71,8 @@ void WaveformRenderBeat::draw(QPainter* painter, QPaintEvent* /*event*/) {
     QPen firstBeatInBarPen(m_firstBeatInBarColor);
     firstBeatInBarPen.setWidth(2.5);
 
+    const Qt::Orientation orientation = m_waveformRenderer->getOrientation();
+    const float rendererWidth = m_waveformRenderer->getWidth();
     const float rendererHeight = m_waveformRenderer->getHeight();
 
     // TODO (m0r13) maybe fancify that thing with two types of lines
@@ -90,11 +92,17 @@ void WaveformRenderBeat::draw(QPainter* painter, QPaintEvent* /*event*/) {
             m_beatsFirstInBar.resize(m_beatsFirstInBar.size() * 2);
         }
 
-        if (it->isFirstInBar()) {
-            m_beatsFirstInBar[beatFirstInBarCount++].setLine(xBeatPoint, 0.0f, xBeatPoint, rendererHeight);
+        if (orientation == Qt::Horizontal) {
+            m_beats[beatCount++].setLine(xBeatPoint, 0.0f, xBeatPoint, rendererHeight);
+            if (it->isFirstInBar()) {
+                m_beatsFirstInBar[beatFirstInBarCount++].setLine(xBeatPoint, 0.0f, xBeatPoint, rendererHeight);
+            }
+        } else {
+            m_beats[beatCount++].setLine(0.0f, xBeatPoint, rendererWidth, xBeatPoint);
+            if (it->isFirstInBar()) {
+                m_beatsFirstInBar[beatFirstInBarCount++].setLine(0.0f, xBeatPoint, rendererWidth, xBeatPoint);
+            }
         }
-        
-        m_beats[beatCount++].setLine(xBeatPoint, 0.0f, xBeatPoint, rendererHeight);
     }
 
     // Make sure to use constData to prevent detaches!
