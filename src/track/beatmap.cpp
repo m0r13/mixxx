@@ -411,7 +411,7 @@ std::unique_ptr<BeatIterator> BeatMap::findBeats(double startSample, double stop
     if (curBeat >= lastBeat) {
         return std::unique_ptr<BeatIterator>();
     }
-    return std::make_unique<BeatMapIterator>(curBeat, lastBeatm m_beats.begin());
+    return std::make_unique<BeatMapIterator>(curBeat, lastBeat, m_beats.begin());
 }
 
 bool BeatMap::hasBeatInRange(double startSample, double stopSample) const {
