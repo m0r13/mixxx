@@ -32,10 +32,11 @@ bool BeatLessThan(const Beat& beat1, const Beat& beat2) {
 class BeatMapIterator : public BeatIterator {
   public:
     BeatMapIterator(BeatList::const_iterator start, BeatList::const_iterator end,
-            BeatList::const_iterator first, int beatsPerBar = 4)
+            BeatList::const_iterator first, int barOffset = 0, int beatsPerBar = 4)
             : m_currentBeat(start),
               m_endBeat(end),
               m_firstBeat(first),
+              m_barOffset(barOffset),
               m_beatsPerBar(beatsPerBar) {
         // Advance to the first enabled beat.
         while (m_currentBeat != m_endBeat && !m_currentBeat->enabled()) {
@@ -48,7 +49,7 @@ class BeatMapIterator : public BeatIterator {
     }
 
     virtual bool isFirstInBar() const {
-        return (m_currentBeat - m_firstBeat) % m_beatsPerBar == 0;
+        return (m_currentBeat - m_firstBeat - m_barOffset) % m_beatsPerBar == 0;
     }
 
     virtual double next() {
@@ -64,6 +65,7 @@ class BeatMapIterator : public BeatIterator {
     BeatList::const_iterator m_currentBeat;
     BeatList::const_iterator m_endBeat;
     BeatList::const_iterator m_firstBeat;
+    int m_barOffset;
     int m_beatsPerBar;
 };
 
@@ -71,7 +73,8 @@ BeatMap::BeatMap(const Track& track, SINT iSampleRate)
         : m_mutex(QMutex::Recursive),
           m_iSampleRate(iSampleRate > 0 ? iSampleRate : track.getSampleRate()),
           m_dCachedBpm(0),
-          m_dLastFrame(0) {
+          m_dLastFrame(0),
+          m_iBarOffset(0) {
     // BeatMap should live in the same thread as the track it is associated
     // with.
     moveToThread(track.thread());
@@ -98,7 +101,8 @@ BeatMap::BeatMap (const BeatMap& other)
           m_iSampleRate(other.m_iSampleRate),
           m_dCachedBpm(other.m_dCachedBpm),
           m_dLastFrame(other.m_dLastFrame),
-          m_beats(other.m_beats) {
+          m_beats(other.m_beats),
+          m_iBarOffset(other.m_iBarOffset) {
     moveToThread(other.thread());
 }
 
@@ -400,7 +404,7 @@ std::unique_ptr<BeatIterator> BeatMap::findBeats(double startSample, double stop
     if (curBeat >= lastBeat) {
         return std::unique_ptr<BeatIterator>();
     }
-    return std::make_unique<BeatMapIterator>(curBeat, lastBeat, m_beats.begin());
+    return std::make_unique<BeatMapIterator>(curBeat, lastBeat, m_beats.begin(), m_iBarOffset);
 }
 
 bool BeatMap::hasBeatInRange(double startSample, double stopSample) const {
@@ -547,6 +551,20 @@ void BeatMap::translate(double dNumSamples) {
             it = m_beats.erase(it);
         }
     }
+    onBeatlistChanged();
+    locker.unlock();
+    emit(updated());
+}
+
+void BeatMap::translateBars(int numBars) {
+    QMutexLocker locker(&m_mutex);
+    // Converting to frame offset
+    if (!isValid()) {
+        return;
+    }
+
+    m_iBarOffset += numBars;
+
     onBeatlistChanged();
     locker.unlock();
     emit(updated());

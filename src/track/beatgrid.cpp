@@ -14,11 +14,12 @@ struct BeatGridData {
 
 class BeatGridIterator : public BeatIterator {
   public:
-    BeatGridIterator(double dBeatLength, double dFirstBeat, double dEndSample, double dGlobalFirstBeat, int dBeatsPerBar = 4)
+    BeatGridIterator(double dBeatLength, double dFirstBeat, double dEndSample, double dGlobalFirstBeat, int iBarOffset = 0, int dBeatsPerBar = 4)
             : m_dBeatLength(dBeatLength),
               m_dCurrentSample(dFirstBeat),
               m_dEndSample(dEndSample),
               m_dFirstBeat(dGlobalFirstBeat),
+              m_iBarOffset(iBarOffset),
               m_dBeatsPerBar(dBeatsPerBar) {
     }
 
@@ -28,7 +29,7 @@ class BeatGridIterator : public BeatIterator {
 
     virtual bool isFirstInBar() const {
         if(m_dCurrentSample >= m_dFirstBeat)
-            return (((int)(((m_dCurrentSample - m_dFirstBeat) / m_dBeatLength)+.5)-1) % m_dBeatsPerBar) == 0;
+            return (((int)(((m_dCurrentSample - m_dFirstBeat) / m_dBeatLength)+.5)-1 - m_iBarOffset) % m_dBeatsPerBar) == 0;
         return false;
     }
 
@@ -43,6 +44,7 @@ class BeatGridIterator : public BeatIterator {
     double m_dCurrentSample;
     double m_dEndSample;
     double m_dFirstBeat;
+    int m_iBarOffset;
     int m_dBeatsPerBar;
 };
 
@@ -51,7 +53,8 @@ BeatGrid::BeatGrid(
         SINT iSampleRate)
         : m_mutex(QMutex::Recursive),
           m_iSampleRate(iSampleRate > 0 ? iSampleRate : track.getSampleRate()),
-          m_dBeatLength(0.0) {
+          m_dBeatLength(0.0),
+          m_iBarOffset(0) {
     // BeatGrid should live in the same thread as the track it is associated
     // with.
     moveToThread(track.thread());
@@ -282,7 +285,7 @@ std::unique_ptr<BeatIterator> BeatGrid::findBeats(double startSample, double sto
         return std::unique_ptr<BeatIterator>();
     }
     double firstBeat = findNextBeat(0);
-    return std::make_unique<BeatGridIterator>(m_dBeatLength, curBeat, stopSample, firstBeat);
+    return std::make_unique<BeatGridIterator>(m_dBeatLength, curBeat, stopSample, firstBeat, m_iBarOffset);
 }
 
 bool BeatGrid::hasBeatInRange(double startSample, double stopSample) const {
@@ -350,6 +353,16 @@ void BeatGrid::translate(double dNumSamples) {
     }
     double newFirstBeatFrames = (firstBeatSample() + dNumSamples) / kFrameSize;
     m_grid.mutable_first_beat()->set_frame_position(newFirstBeatFrames);
+    locker.unlock();
+    emit(updated());
+}
+
+void BeatGrid::translateBars(int barOffset) {
+    QMutexLocker locker(&m_mutex);
+    if (!isValid()) {
+        return;
+    }
+    m_iBarOffset += barOffset;
     locker.unlock();
     emit(updated());
 }

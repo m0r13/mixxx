@@ -70,6 +70,7 @@ class BeatGrid : public QObject, public virtual Beats {
     virtual void removeBeat(double dBeatSample);
     virtual void moveBeat(double dBeatSample, double dNewBeatSample);
     virtual void translate(double dNumSamples);
+    virtual void translateBars(int barOffset);
     virtual void scale(enum BPMScale scale);
     virtual void setBpm(double dBpm);
 
@@ -94,6 +95,8 @@ class BeatGrid : public QObject, public virtual Beats {
     mixxx::track::io::BeatGrid m_grid;
     // The length of a beat in samples
     double m_dBeatLength;
+
+    int m_iBarOffset;
 };
 
 

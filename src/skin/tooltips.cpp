@@ -344,6 +344,14 @@ void Tooltips::addStandardTooltips() {
             << tr("Adjust Beats Later")
             << tr("When tapped, moves the beatgrid right by a small amount.");
 
+    add("bars_translate_earlier")
+            << tr("Adjust Bars Earlier")
+            << tr("When tapped, moves the bargrid left by one beat.");
+
+    add("bars_translate_later")
+            << tr("Adjust Bars Later")
+            << tr("When tapped, moves the bargrid right by one beat.");
+
     add("beats_translate_curpos")
             << tr("Adjust Beatgrid")
             << QString("%1: %2").arg(leftClick, tr("Adjust beatgrid so the closest beat is aligned with the current play position."))

@@ -146,6 +146,8 @@ class Beats {
     // removed. Beats instance must have the capability BEATSCAP_TRANSLATE.
     virtual void translate(double dNumSamples) = 0;
 
+    virtual void translateBars(int barOffset) = 0;
+
     // Scale the position of every beat in the song by dScalePercentage. Beats
     // class must have the capability BEATSCAP_SCALE.
     virtual void scale(enum BPMScale scale) = 0;

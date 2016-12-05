@@ -79,6 +79,7 @@ class BeatMap : public QObject, public Beats {
     virtual void removeBeat(double dBeatSample);
     virtual void moveBeat(double dBeatSample, double dNewBeatSample);
     virtual void translate(double dNumSamples);
+    virtual void translateBars(int numBeats);
     virtual void scale(enum BPMScale scale);
     virtual void setBpm(double dBpm);
 
@@ -108,6 +109,8 @@ class BeatMap : public QObject, public Beats {
     double m_dCachedBpm;
     double m_dLastFrame;
     BeatList m_beats;
+
+    int m_iBarOffset;
 };
 
 #endif /* BEATMAP_H_ */
