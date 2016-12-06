@@ -74,7 +74,9 @@ BeatGrid::BeatGrid(const BeatGrid& other)
           m_subVersion(other.m_subVersion),
           m_iSampleRate(other.m_iSampleRate),
           m_grid(other.m_grid),
-          m_dBeatLength(other.m_dBeatLength) {
+          m_dBeatLength(other.m_dBeatLength),
+          m_iBarOffset(other.m_iBarOffset)
+{
     moveToThread(other.thread());
 }
 
@@ -108,6 +110,7 @@ void BeatGrid::readByteArray(const QByteArray& byteArray) {
     if (grid.ParseFromArray(byteArray.constData(), byteArray.length())) {
         m_grid = grid;
         m_dBeatLength = (60.0 * m_iSampleRate / bpm()) * kFrameSize;
+        m_iBarOffset = grid.bar_offset();
         return;
     }
 
@@ -363,6 +366,7 @@ void BeatGrid::translateBars(int barOffset) {
         return;
     }
     m_iBarOffset += barOffset;
+    m_grid.set_bar_offset(m_iBarOffset);
     locker.unlock();
     emit(updated());
 }
